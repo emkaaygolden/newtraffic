@@ -1,19 +1,23 @@
-name: Tor Playwright Traffic
+name: Tor Playwright Traffic (matrix)
 
 on:
   workflow_dispatch:
+  # schedule:
+  #   - cron: '0 * * * *'  # optional
 
 jobs:
   simulate:
     runs-on: ubuntu-latest
-    timeout-minutes: 720
+    timeout-minutes: 1440   # attempt to allow up to 24 hours (subject to account limits)
     strategy:
       matrix:
-        runner: [1, 2, 3, 4]  # This will run 4 parallel runners
+        # each item becomes a parallel runner; assign an explicit tor base port to avoid arithmetic
+        port: [9050,9051,9052,9053,9054,9055,9056,9057,9058,9059,9060,9061,9062,9063,9064,9065,9066,9067,9068,9069]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up system packages and Python
         run: |
           sudo apt-get update -y
           sudo apt-get install -y tor curl wget unzip build-essential
@@ -21,9 +25,24 @@ jobs:
           pip install playwright fake-useragent
           python -m playwright install --with-deps chromium
 
+      - name: Debug info
+        run: |
+          echo "Runner matrix port = ${{ matrix.port }}"
+          echo "This runner public IP (for debug) will be:"
+          curl -s https://ifconfig.me || true
+
       - name: Run simulator
         env:
+          TOR_BASE_PORT: ${{ matrix.port }}
           CONCURRENCY: 2
-          TOR_BASE_PORT: ${{ 9050 + matrix.runner }} # different port per runner
         run: |
           python main.py
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-logs-${{ matrix.port }}
+          path: |
+            **/*.log
+            main.py
