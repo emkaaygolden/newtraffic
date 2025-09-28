@@ -1,0 +1,29 @@
+name: Tor Playwright Traffic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 720
+    strategy:
+      matrix:
+        runner: [1, 2, 3, 4]  # This will run 4 parallel runners
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y tor curl wget unzip build-essential
+          python -m pip install --upgrade pip
+          pip install playwright fake-useragent
+          python -m playwright install --with-deps chromium
+
+      - name: Run simulator
+        env:
+          CONCURRENCY: 2
+          TOR_BASE_PORT: ${{ 9050 + matrix.runner }} # different port per runner
+        run: |
+          python main.py
